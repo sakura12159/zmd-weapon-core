@@ -180,8 +180,7 @@ class WeaponCorePlannerWidget(QWidget):
             targets = set(target_weapons)
             max_target_weapons = max_nontarget_weapons = 0
             best_weapon_indices_lists, cur_weapon_indices_list = [], []
-            tag1_vis_list, tag23_vis_list = [], []
-            tag1_vis, tag23_vis = set(), None
+            tags_vis_list, tags_vis, tag1_vis, tag23_vis = [], set(), set(), None
 
             def helper(i, tag2_pool, tag3_pool):
                 nonlocal tag1_vis, tag23_vis
@@ -192,14 +191,16 @@ class WeaponCorePlannerWidget(QWidget):
                     # 更新最优统计值
                     if cur_target_weapons > max_target_weapons or cur_target_weapons == max_target_weapons and cur_nontarget_weapons > max_nontarget_weapons:
                         best_weapon_indices_lists.clear()
-                        tag1_vis_list.clear()
-                        tag23_vis_list.clear()
+                        tags_vis_list.clear()
+                        tags_vis.clear()
                         max_target_weapons, max_nontarget_weapons = cur_target_weapons, cur_nontarget_weapons
                     # 判断当前武器选择是否为最优配置
                     if cur_target_weapons == max_target_weapons and cur_nontarget_weapons == max_nontarget_weapons:
-                        best_weapon_indices_lists.append(cur_weapon_indices_list.copy())
-                        tag1_vis_list.append(tuple(tag1_vis))
-                        tag23_vis_list.append(tag23_vis)
+                        cur_tags = (*sorted(tag1_vis), tag23_vis)
+                        if cur_tags not in tags_vis:
+                            best_weapon_indices_lists.append(cur_weapon_indices_list.copy())
+                            tags_vis.add(cur_tags)
+                            tags_vis_list.append(cur_tags)
                     return
 
                 helper(i - 1, tag2_pool, tag3_pool)
@@ -246,7 +247,7 @@ class WeaponCorePlannerWidget(QWidget):
 
                 if max_target_weapons > 0:
                     text.append(f'副本 [{place}] 最多可获得 [{max_target_weapons}] 个目标武器基质与 [{max_nontarget_weapons}] 个其他武器基质\n')
-                    for idx, (weapon_idx_lst, tag1_chosen, tag23_chosen) in enumerate(zip(best_weapon_indices_lists, tag1_vis_list, tag23_vis_list), 1):
+                    for idx, (weapon_idx_lst, tags_chosen) in enumerate(zip(best_weapon_indices_lists, tags_vis_list), 1):
                         target_weapons_chosen, nontarget_weapons_chosen = [], []
                         for weapon_idx in weapon_idx_lst:
                             weapon_chosen = weapons_list[weapon_idx]
@@ -254,7 +255,7 @@ class WeaponCorePlannerWidget(QWidget):
                                 target_weapons_chosen.append(weapon_chosen)
                             else:
                                 nontarget_weapons_chosen.append(weapon_chosen)
-                        text.append(f'方案 [{idx}]：第一词条选择 [{'，'.join(tag1_chosen)}] ，第二、三词条选择 [{tag23_chosen}] 可获得以下目标武器基质：\n')
+                        text.append(f'方案 [{idx}]：第一词条选择 [{'，'.join(tags_chosen[:-1])}] ，第二、三词条选择 [{tags_chosen[-1]}] 可获得以下目标武器基质：\n')
                         for weapon in target_weapons_chosen:
                             text.append(f'{weapon} ({weapons[weapon]}*)'.ljust(20))
                             if self.check_inventory and self.inventory is not None:
