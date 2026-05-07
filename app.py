@@ -57,7 +57,7 @@ class WeaponCheckerWidget(QWidget):
         for i in range(0, len(tag_pool), n_col):
             row_layout = QHBoxLayout()
             for j in range(i, i + n_col):
-                if j >= len(tag_pool):
+                if j >= len(tag_pool):  # 空缺的 tag 放一个 widget 占位
                     checkbox = QWidget(parent=parent)
                 else:
                     checkbox = QCheckBox(tag_pool[j], parent=parent)
@@ -117,14 +117,16 @@ class WeaponCheckerWidget(QWidget):
         main_layout.addSpacing(25)
 
         hbox = QHBoxLayout()
+
         vbox = QVBoxLayout()
         check_inventory_checkbox = QCheckBox('检查仓储', parent=self)
-        check_inventory_checkbox.clicked.connect(lambda: setattr(self, 'check_inventory', check_inventory_checkbox.isChecked()))
+        check_inventory_checkbox.clicked.connect(lambda: setattr(self, 'check_inventory', check_inventory_checkbox.isChecked()))  # 更新 check_inventory 属性
         vbox.addWidget(check_inventory_checkbox)
         confirm_button = QPushButton('检查基质', parent=self)
         confirm_button.clicked.connect(self.check_weapon_core)
-        confirm_button.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+        confirm_button.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)  # 占满上下空间
         vbox.addWidget(confirm_button)
+
         hbox.addLayout(vbox)
 
         self.text_edit = QTextEdit(parent=self, readOnly=True)
@@ -273,26 +275,48 @@ class WeaponCorePlannerWidget(QWidget):
             text = '\n'.join(text)
         self.text_edit.setText(text)
 
+    def plan_with_no_target(self):
+        """根据仓库中武器已拥有，基质未拥有的情况计算最高效率的刷取计划"""
+        if self.check_inventory and self.inventory is None:
+            self.load_inventory()
+
+        # 更新 target_weapons_str -> 更新 target_weapons_str 的 line_edit 显示
+        self.target_weapons_str = ' '.join(weapon for weapon in self.config['weapons'] if self.inventory['weapon_possessed'][weapon] and not self.inventory['weapon_core_possessed'][weapon])
+        # 为所有已拥有但无武器基质的武器计算最优刷取计划
+        self.plan()
+
     def init(self):
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(50, 50, 50, 50)
 
         hbox = QHBoxLayout()
+
+        vbox = QVBoxLayout()
         check_inventory_checkbox = QCheckBox('检查仓储', parent=self)
-        check_inventory_checkbox.clicked.connect(lambda: setattr(self, 'check_inventory', check_inventory_checkbox.isChecked()))
-        hbox.addWidget(check_inventory_checkbox)
+        check_inventory_checkbox.clicked.connect(lambda: setattr(self, 'check_inventory', check_inventory_checkbox.isChecked()))  # 更新 check_inventory 属性
+        plan_with_no_target_btn = QPushButton('随便刷刷', parent=self)
+        plan_with_no_target_btn.setEnabled(False)  # 默认不可使用
+        plan_with_no_target_btn.clicked.connect(self.plan_with_no_target)
+        check_inventory_checkbox.stateChanged.connect(lambda: plan_with_no_target_btn.setEnabled(check_inventory_checkbox.isChecked()))  # 状态随检查仓储的按钮变化，只有在 检查仓储 启用时才能使用 随便刷刷
+        vbox.addWidget(check_inventory_checkbox)
+        vbox.addSpacing(5)
+        vbox.addWidget(plan_with_no_target_btn)
+
+        hbox.addLayout(vbox)
         hbox.addSpacing(5)
         hbox.addWidget(VDividerWidget(parent=self))
         hbox.addSpacing(5)
         hbox.addWidget(QLabel('想要刷取的武器：\n（多个武器之间需用空格或中英文逗号分隔）', parent=self))
         line_edit = QLineEdit(parent=self)
-        line_edit.textChanged.connect(lambda: setattr(self, 'target_weapons_str', line_edit.text()))
+        line_edit.textChanged.connect(lambda: setattr(self, 'target_weapons_str', line_edit.text()))  # 更新 target_weapons_str
+        plan_with_no_target_btn.clicked.connect(lambda: line_edit.setText(self.target_weapons_str))  # 更新 target_weapons_str 的 line_edit 
         hbox.addSpacing(5)
         hbox.addWidget(line_edit)
         hbox.addSpacing(10)
         confirm_button = QPushButton('确定', parent=self)
         confirm_button.clicked.connect(self.plan)
         hbox.addWidget(confirm_button)
+
         main_layout.addLayout(hbox)
 
         self.text_edit = QTextEdit(parent=self, readOnly=True)
@@ -324,7 +348,7 @@ class MainWindow(QMainWindow):
         frame_geom.moveCenter(center_point)
         self.move(frame_geom.topLeft())
 
-        self.setWindowTitle('终末地app')
+        self.setWindowTitle('终末地 app')
 
         # 布局
         # 基质刷取建议
