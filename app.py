@@ -275,14 +275,24 @@ class WeaponCorePlannerWidget(QWidget):
             text = '\n'.join(text)
         self.text_edit.setText(text)
 
-    def plan_with_no_target(self):
-        """根据仓库中武器已拥有，基质未拥有的情况计算最高效率的刷取计划"""
+    def plan_weapon_no_core(self):
+        """根据仓库中基质未拥有的情况计算最高效率的刷取计划"""
         if self.check_inventory and self.inventory is None:
             self.load_inventory()
 
         # 更新 target_weapons_str -> 更新 target_weapons_str 的 line_edit 显示
         self.target_weapons_str = ' '.join(weapon for weapon in self.config['weapons'] if self.inventory['weapon_possessed'][weapon] and not self.inventory['weapon_core_possessed'][weapon])
-        # 为所有已拥有但无武器基质的武器计算最优刷取计划
+        # 计算最优刷取计划
+        self.plan()
+
+    def plan_no_weapon_no_core(self):
+        """根据仓库中武器已拥有，基质未拥有的情况计算最高效率的刷取计划"""
+        if self.check_inventory and self.inventory is None:
+            self.load_inventory()
+
+        # 更新 target_weapons_str -> 更新 target_weapons_str 的 line_edit 显示
+        self.target_weapons_str = ' '.join(weapon for weapon in self.config['weapons'] if not self.inventory['weapon_core_possessed'][weapon])
+        # 计算最优刷取计划
         self.plan()
 
     def init(self):
@@ -294,13 +304,19 @@ class WeaponCorePlannerWidget(QWidget):
         vbox = QVBoxLayout()
         check_inventory_checkbox = QCheckBox('检查仓储', parent=self)
         check_inventory_checkbox.clicked.connect(lambda: setattr(self, 'check_inventory', check_inventory_checkbox.isChecked()))  # 更新 check_inventory 属性
-        plan_with_no_target_btn = QPushButton('随便刷刷', parent=self)
-        plan_with_no_target_btn.setEnabled(False)  # 默认不可使用
-        plan_with_no_target_btn.clicked.connect(self.plan_with_no_target)
-        check_inventory_checkbox.stateChanged.connect(lambda: plan_with_no_target_btn.setEnabled(check_inventory_checkbox.isChecked()))  # 状态随检查仓储的按钮变化，只有在 检查仓储 启用时才能使用 随便刷刷
+        plan_weapon_no_core_btn = QPushButton('补图鉴', parent=self)
+        plan_weapon_no_core_btn.setEnabled(False)
+        plan_weapon_no_core_btn.clicked.connect(self.plan_weapon_no_core)
+        plan_no_weapon_no_core_btn = QPushButton('随便刷', parent=self)
+        plan_no_weapon_no_core_btn.setEnabled(False)  # 默认不可使用
+        plan_no_weapon_no_core_btn.clicked.connect(self.plan_no_weapon_no_core)
+        check_inventory_checkbox.stateChanged.connect(lambda: plan_weapon_no_core_btn.setEnabled(check_inventory_checkbox.isChecked()))  # 状态随检查仓储的按钮变化，只有在 检查仓储 启用时才能使用 补图鉴
+        check_inventory_checkbox.stateChanged.connect(lambda: plan_no_weapon_no_core_btn.setEnabled(check_inventory_checkbox.isChecked()))  # 状态随检查仓储的按钮变化，只有在 检查仓储 启用时才能使用 随便刷
         vbox.addWidget(check_inventory_checkbox)
         vbox.addSpacing(5)
-        vbox.addWidget(plan_with_no_target_btn)
+        vbox.addWidget(plan_weapon_no_core_btn)
+        vbox.addSpacing(5)
+        vbox.addWidget(plan_no_weapon_no_core_btn)
 
         hbox.addLayout(vbox)
         hbox.addSpacing(5)
@@ -309,7 +325,8 @@ class WeaponCorePlannerWidget(QWidget):
         hbox.addWidget(QLabel('想要刷取的武器：\n（多个武器之间需用空格或中英文逗号分隔）', parent=self))
         line_edit = QLineEdit(parent=self)
         line_edit.textChanged.connect(lambda: setattr(self, 'target_weapons_str', line_edit.text()))  # 更新 target_weapons_str
-        plan_with_no_target_btn.clicked.connect(lambda: line_edit.setText(self.target_weapons_str))  # 更新 target_weapons_str 的 line_edit 
+        plan_weapon_no_core_btn.clicked.connect(lambda: line_edit.setText(self.target_weapons_str))  # 更新 target_weapons_str 的 line_edit 
+        plan_no_weapon_no_core_btn.clicked.connect(lambda: line_edit.setText(self.target_weapons_str))  # 更新 target_weapons_str 的 line_edit 
         hbox.addSpacing(5)
         hbox.addWidget(line_edit)
         hbox.addSpacing(10)
