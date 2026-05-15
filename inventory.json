@@ -61,7 +61,7 @@
 
     "weapon_core_possessed": {
         "宏愿": true,
-        "不知归": false,
+        "不知归": true,
         "熔铸火焰": true,
         "黯色火炬": false,
         "扶摇": false,
@@ -71,7 +71,7 @@
         "光荣记忆": true,
         "狼之绯": false,
         "钢铁余音": false,
-        "坚城铸造者": false,
+        "坚城铸造者": true,
         "逐鳞3.0": false,
         "十二问": false,
         "O.B.J.轻芒": false,
@@ -98,9 +98,9 @@
         "领航者": true,
         "楔子": true,
         "同类相食": true,
-        "落草": false,
+        "落草": true,
         "望乡": true,
-        "作品：众生": false,
+        "作品：众生": true,
         "O.B.J.迅极": false,
         "理性告别": true,
 
@@ -112,7 +112,7 @@
         "骑士精神": false,
         "孤舟": true,
         "雾中微光": false,
-        "悼亡诗": false,
+        "悼亡诗": true,
         "莫奈何": false,
         "迷失荒野": true,
         "布道自由": false,

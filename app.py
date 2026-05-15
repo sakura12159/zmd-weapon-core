@@ -23,17 +23,17 @@ class VDividerWidget(QFrame):
 class WeaponCheckerWidget(QWidget):
     def __init__(self, parent, config):
         super().__init__(parent=parent)
-        self.tag1 = None
-        self.tag2 = None
-        self.tag3 = None
+        self.basic_tag = None
+        self.extra_tag = None
+        self.skill_tag = None
 
         self.check_inventory = False
         self.inventory = None
         self.config = config
         self.tag_mp = {
-            '第一词条': 'tag1',
-            '第二词条': 'tag2',
-            '第三词条': 'tag3'
+            '基础词条': 'basic_tag',
+            '附加词条': 'extra_tag',
+            '技能词条': 'skill_tag'
         }
 
         self.init()
@@ -68,10 +68,10 @@ class WeaponCheckerWidget(QWidget):
     
     def check_weapon_core(self):
         """检查武器基质在当前版本是否有可适配的武器"""
-        if self.check_inventory and self.inventory is None:
+        if self.check_inventory:
             self.load_inventory()
 
-        if self.tag1 is None or self.tag2 is None or self.tag3 is None:
+        if self.basic_tag is None or self.extra_tag is None or self.skill_tag is None:
             text = '有未选择的词条项，请在每个词条池中选择一条！'
         else:
             # 武器按标签分组
@@ -82,12 +82,12 @@ class WeaponCheckerWidget(QWidget):
             for weapon in weapons:
                 weapons_grouped_by_tag[tuple(weapon_tags[weapon])].append(weapon)
 
-            tags = (self.tag1, self.tag2, self.tag3)
+            tags = (self.basic_tag, self.extra_tag, self.skill_tag)
             if tags not in weapons_grouped_by_tag:
-                text = f'\n基质 [{self.tag1} - {self.tag2} - {self.tag3}] 没有适配的武器\n'
+                text = f'\n基质 [{self.basic_tag} - {self.extra_tag} - {self.skill_tag}] 没有适配的武器\n'
             else:
                 matched_weapons = sorted(weapons_grouped_by_tag[tags], key=weapons.get, reverse=True)
-                text = [f'\n基质 [{self.tag1} - {self.tag2} - {self.tag3}] 有适配的武器：\n']
+                text = [f'\n基质 [{self.basic_tag} - {self.extra_tag} - {self.skill_tag}] 有适配的武器：\n']
                 for weapon in matched_weapons:
                     text.append(f'\t{weapon}({weapons[weapon]}*)')
                     if self.check_inventory:
@@ -100,17 +100,17 @@ class WeaponCheckerWidget(QWidget):
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(50, 50, 50, 50)
 
-        layout = self.init_tag_layout(self, '第一词条', self.config['tag_pools']['tag1_pool'], self.config['tag1_n_col'])
+        layout = self.init_tag_layout(self, '基础词条', self.config['tag_pools']['basic_tag_pool'], self.config['basic_tag_n_col'])
         main_layout.addLayout(layout)
         main_layout.addSpacing(25)
         main_layout.addWidget(HDividerWidget(parent=self))
         main_layout.addSpacing(25)
-        layout = self.init_tag_layout(self, '第二词条', self.config['tag_pools']['tag2_pool'], self.config['tag2_n_col'])
+        layout = self.init_tag_layout(self, '附加词条', self.config['tag_pools']['extra_tag_pool'], self.config['extra_tag_n_col'])
         main_layout.addLayout(layout)
         main_layout.addSpacing(25)
         main_layout.addWidget(HDividerWidget(parent=self))
         main_layout.addSpacing(25)
-        layout = self.init_tag_layout(self, '第三词条', self.config['tag_pools']['tag3_pool'], self.config['tag3_n_col'])
+        layout = self.init_tag_layout(self, '技能词条', self.config['tag_pools']['skill_tag_pool'], self.config['skill_tag_n_col'])
         main_layout.addLayout(layout)
         main_layout.addSpacing(25)
         main_layout.addWidget(HDividerWidget(parent=self))
@@ -161,7 +161,7 @@ class WeaponCorePlannerWidget(QWidget):
             1.目标武器
             2.其他武器\n
         """
-        if self.check_inventory and self.inventory is None:
+        if self.check_inventory:
             self.load_inventory()
 
         target_weapons = self.target_weapons_str.replace(',', ' ').replace('，', ' ').split()
@@ -182,10 +182,10 @@ class WeaponCorePlannerWidget(QWidget):
             targets = set(target_weapons)
             max_target_weapons = max_nontarget_weapons = 0
             best_weapon_indices_lists, cur_weapon_indices_list = [], []
-            tags_vis_list, tags_vis, tag1_vis, tag23_vis = [], set(), set(), None
+            tags_vis_list, tags_vis, basic_tag_vis, extra_skill_tag_vis = [], set(), set(), None
 
-            def helper(i, tag2_pool, tag3_pool):
-                nonlocal tag1_vis, tag23_vis
+            def helper(i):
+                nonlocal basic_tag_vis, extra_skill_tag_vis
                 if i < 0:
                     nonlocal max_target_weapons, max_nontarget_weapons
                     cur_target_weapons = sum(1 for idx in cur_weapon_indices_list if weapons_list[idx] in targets)
@@ -198,54 +198,54 @@ class WeaponCorePlannerWidget(QWidget):
                         max_target_weapons, max_nontarget_weapons = cur_target_weapons, cur_nontarget_weapons
                     # 判断当前武器选择是否为最优配置
                     if cur_target_weapons == max_target_weapons and cur_nontarget_weapons == max_nontarget_weapons:
-                        cur_tags = (*sorted(tag1_vis), tag23_vis)
+                        cur_tags = (*sorted(basic_tag_vis), extra_skill_tag_vis)
                         if cur_tags not in tags_vis:
                             best_weapon_indices_lists.append(cur_weapon_indices_list.copy())
                             tags_vis.add(cur_tags)
                             tags_vis_list.append(cur_tags)
                     return
 
-                helper(i - 1, tag2_pool, tag3_pool)
+                helper(i - 1)
 
-                tag1, tag2, tag3 = weapon_tags[weapons_list[i]]
-                if tag2 not in tag2_pool or tag3 not in tag3_pool:  # 这个武器适配的基质不在当前副本的产出范围内
+                basic_tag, extra_tag, skill_tag = weapon_tags[weapons_list[i]]
+                if extra_tag not in extra_tag_pool or skill_tag not in skill_tag_pool:  # 这个武器适配的基质不在当前副本的产出范围内
                     return
-                if tag23_vis is None:  # 没选过任何基质
-                    # 选第二词条
-                    tag23_vis = tag2
-                    tag1_vis.add(tag1)
+                if extra_skill_tag_vis is None:  # 没选过任何基质
+                    # 选附加词条
+                    extra_skill_tag_vis = extra_tag
+                    basic_tag_vis.add(basic_tag)
                     cur_weapon_indices_list.append(i)
-                    helper(i - 1, tag2_pool, tag3_pool)
+                    helper(i - 1)
                     cur_weapon_indices_list.pop()
-                    tag23_vis = None
-                    tag1_vis.remove(tag1)
-                    # 选第三词条
-                    tag23_vis = tag3
-                    tag1_vis.add(tag1)
+                    extra_skill_tag_vis = None
+                    basic_tag_vis.remove(basic_tag)
+                    # 选技能词条
+                    extra_skill_tag_vis = skill_tag
+                    basic_tag_vis.add(basic_tag)
                     cur_weapon_indices_list.append(i)
-                    helper(i - 1, tag2_pool, tag3_pool)
+                    helper(i - 1)
                     cur_weapon_indices_list.pop()
-                    tag23_vis = None
-                    tag1_vis.remove(tag1)
+                    extra_skill_tag_vis = None
+                    basic_tag_vis.remove(basic_tag)
                 else:
-                    if tag2 != tag23_vis and tag3 != tag23_vis:  # 这个武器适配的基质词条不能与当前已选择的武器列表兼容
+                    if extra_tag != extra_skill_tag_vis and skill_tag != extra_skill_tag_vis:  # 这个武器适配的基质词条不能与当前已选择的武器列表兼容
                         return
-                    # 第二或三词条兼容
-                    if tag1 in tag1_vis:  # 第一词条兼容
+                    # 附加或三词条兼容
+                    if basic_tag in basic_tag_vis:  # 基础词条兼容
                         cur_weapon_indices_list.append(i)
-                        helper(i - 1, tag2_pool, tag3_pool)
+                        helper(i - 1)
                         cur_weapon_indices_list.pop()
-                    elif len(tag1_vis) < 3:  # 第一条不兼容但仍有选择余地
-                        tag1_vis.add(tag1)
+                    elif len(basic_tag_vis) < 3:  # 基础条不兼容但仍有选择余地
+                        basic_tag_vis.add(basic_tag)
                         cur_weapon_indices_list.append(i)
-                        helper(i - 1, tag2_pool, tag3_pool)
+                        helper(i - 1)
                         cur_weapon_indices_list.pop()
-                        tag1_vis.remove(tag1)
+                        basic_tag_vis.remove(basic_tag)
 
             text.append('\n开始计算每个副本的刷取目标武器基质的最佳词条搭配\n')
             for place, place_tag_pool in places.items():
-                _, tag2_pool, tag3_pool = place_tag_pool
-                helper(len(weapons_list) - 1, tag2_pool, tag3_pool)
+                _, extra_tag_pool, skill_tag_pool = place_tag_pool
+                helper(len(weapons_list) - 1)
 
                 if max_target_weapons > 0:
                     text.append(f'副本 [{place}] 最多可获得 [{max_target_weapons}] 个目标武器基质与 [{max_nontarget_weapons}] 个其他武器基质\n')
@@ -257,7 +257,7 @@ class WeaponCorePlannerWidget(QWidget):
                                 target_weapons_chosen.append(weapon_chosen)
                             else:
                                 nontarget_weapons_chosen.append(weapon_chosen)
-                        text.append(f'方案 [{idx}]：第一词条选择 [{'，'.join(tags_chosen[:-1])}] ，第二、三词条选择 [{tags_chosen[-1]}] 可获得以下目标武器基质：\n')
+                        text.append(f'方案 [{idx}]：基础词条选择 [{'，'.join(tags_chosen[:-1])}] ，附加或技能词条选择 [{tags_chosen[-1]}] 可获得以下目标武器基质：\n')
                         for weapon in target_weapons_chosen:
                             text.append(f'{weapon} ({weapons[weapon]}*)'.ljust(20))
                             if self.check_inventory and self.inventory is not None:
@@ -277,8 +277,7 @@ class WeaponCorePlannerWidget(QWidget):
 
     def plan_weapon_no_core(self):
         """根据仓库中基质未拥有的情况计算最高效率的刷取计划"""
-        if self.check_inventory and self.inventory is None:
-            self.load_inventory()
+        self.load_inventory()
 
         # 更新 target_weapons_str -> 更新 target_weapons_str 的 line_edit 显示
         self.target_weapons_str = ' '.join(weapon for weapon in self.config['weapons'] if self.inventory['weapon_possessed'][weapon] and not self.inventory['weapon_core_possessed'][weapon])
@@ -287,8 +286,7 @@ class WeaponCorePlannerWidget(QWidget):
 
     def plan_no_weapon_no_core(self):
         """根据仓库中武器已拥有，基质未拥有的情况计算最高效率的刷取计划"""
-        if self.check_inventory and self.inventory is None:
-            self.load_inventory()
+        self.load_inventory()
 
         # 更新 target_weapons_str -> 更新 target_weapons_str 的 line_edit 显示
         self.target_weapons_str = ' '.join(weapon for weapon in self.config['weapons'] if not self.inventory['weapon_core_possessed'][weapon])
@@ -365,7 +363,7 @@ class MainWindow(QMainWindow):
         frame_geom.moveCenter(center_point)
         self.move(frame_geom.topLeft())
 
-        self.setWindowTitle('终末地 app')
+        self.setWindowTitle('终末地武器基质 app')
 
         # 布局
         # 基质刷取建议
