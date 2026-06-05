@@ -75,21 +75,20 @@ class WeaponCheckerWidget(QWidget):
             text = '有未选择的词条项，请在每个词条池中选择一条！'
         else:
             # 武器按标签分组
-            weapons = self.config['weapons']
-            weapon_tags = self.config['weapon_tags']
+            weapon_props = self.config['weapon_props']
 
             weapons_grouped_by_tag = defaultdict(list)
-            for weapon in weapons:
-                weapons_grouped_by_tag[tuple(weapon_tags[weapon])].append(weapon)
+            for weapon in weapon_props:
+                weapons_grouped_by_tag[tuple(weapon_props[weapon][1])].append(weapon)
 
             tags = (self.basic_tag, self.extra_tag, self.skill_tag)
             if tags not in weapons_grouped_by_tag:
                 text = f'\n基质 [{self.basic_tag} - {self.extra_tag} - {self.skill_tag}] 没有适配的武器\n'
             else:
-                matched_weapons = sorted(weapons_grouped_by_tag[tags], key=weapons.get, reverse=True)
+                matched_weapons = sorted(weapons_grouped_by_tag[tags], key=lambda x: weapon_props[x][0], reverse=True)
                 text = [f'\n基质 [{self.basic_tag} - {self.extra_tag} - {self.skill_tag}] 有适配的武器：\n']
                 for weapon in matched_weapons:
-                    text.append(f'\t{weapon}({weapons[weapon]}*)')
+                    text.append(f'\t{weapon}({weapon_props[weapon][0]}*)')
                     if self.check_inventory:
                         text[-1] += ' ' * 10 + \
                             f' - 武器{"已" if self.inventory['weapon_possessed'][weapon] else "未"}拥有，基质{"已" if self.inventory['weapon_core_possessed'][weapon] else "未"}拥有'
@@ -165,12 +164,11 @@ class WeaponCorePlannerWidget(QWidget):
             self.load_inventory()
 
         target_weapons = self.target_weapons_str.replace(',', ' ').replace('，', ' ').split()
-        if not target_weapons or any(weapon not in self.config['weapons'] for weapon in target_weapons):
+        if not target_weapons or any(weapon not in self.config['weapon_props'] for weapon in target_weapons):
             text = '输入有误，请检查武器名称并按提示修改输入格式！'
         else:
             text = []
-            weapons = self.config['weapons']
-            weapon_tags = self.config['weapon_tags']
+            weapon_props = self.config['weapon_props']
             places = self.config['places']
 
             if self.check_inventory and self.inventory is not None:
@@ -178,7 +176,7 @@ class WeaponCorePlannerWidget(QWidget):
                     if self.inventory['weapon_core_possessed'][weapon]:
                         text.append(f'武器 [{weapon}] 已有适配基质\n')
 
-            weapons_list = sorted(weapons.keys(), key=weapons.get)
+            weapons_list = sorted(weapon_props.keys(), key=lambda x: weapon_props[x][0])
             targets = set(target_weapons)
             max_target_weapons = max_nontarget_weapons = 0
             best_weapon_indices_lists, cur_weapon_indices_list = [], []
@@ -207,7 +205,7 @@ class WeaponCorePlannerWidget(QWidget):
 
                 helper(i - 1)
 
-                basic_tag, extra_tag, skill_tag = weapon_tags[weapons_list[i]]
+                basic_tag, extra_tag, skill_tag = weapon_props[weapons_list[i]][1]
                 if extra_tag not in extra_tag_pool or skill_tag not in skill_tag_pool:  # 这个武器适配的基质不在当前副本的产出范围内
                     return
                 if extra_skill_tag_vis is None:  # 没选过任何基质
@@ -259,14 +257,14 @@ class WeaponCorePlannerWidget(QWidget):
                                 nontarget_weapons_chosen.append(weapon_chosen)
                         text.append(f'方案 [{idx}]：基础词条选择 [{'，'.join(tags_chosen[:-1])}] ，附加或技能词条选择 [{tags_chosen[-1]}] 可获得以下目标武器基质：\n')
                         for weapon in target_weapons_chosen:
-                            text.append(f'{weapon} ({weapons[weapon]}*)'.ljust(20))
+                            text.append(f'{weapon} ({weapon_props[weapon][0]}*)'.ljust(20))
                             if self.check_inventory and self.inventory is not None:
                                 text[-1] += ' ' * 10 + \
                                      f' - 武器{"已" if self.inventory['weapon_possessed'][weapon] else "未"}拥有，基质{"已" if self.inventory['weapon_core_possessed'][weapon] else "未"}拥有'
                         if nontarget_weapons_chosen:
                             text.append('\n同时可以获得以下其他武器：\n')
                             for weapon in nontarget_weapons_chosen:
-                                text.append(f'{weapon} ({weapons[weapon]}*)'.ljust(20))
+                                text.append(f'{weapon} ({weapon_props[weapon][0]}*)'.ljust(20))
                                 if self.check_inventory and self.inventory is not None:
                                     text[-1] += ' ' * 10 + \
                                         f' - 武器{"已" if self.inventory['weapon_possessed'][weapon] else "未"}拥有，基质{"已" if self.inventory['weapon_core_possessed'][weapon] else "未"}拥有'
@@ -280,7 +278,7 @@ class WeaponCorePlannerWidget(QWidget):
         self.load_inventory()
 
         # 更新 target_weapons_str -> 更新 target_weapons_str 的 line_edit 显示
-        self.target_weapons_str = ' '.join(weapon for weapon in self.config['weapons'] if self.inventory['weapon_possessed'][weapon] and not self.inventory['weapon_core_possessed'][weapon])
+        self.target_weapons_str = ' '.join(weapon for weapon in self.config['weapon_props'] if self.inventory['weapon_possessed'][weapon] and not self.inventory['weapon_core_possessed'][weapon])
         # 计算最优刷取计划
         self.plan()
 
@@ -289,7 +287,7 @@ class WeaponCorePlannerWidget(QWidget):
         self.load_inventory()
 
         # 更新 target_weapons_str -> 更新 target_weapons_str 的 line_edit 显示
-        self.target_weapons_str = ' '.join(weapon for weapon in self.config['weapons'] if not self.inventory['weapon_core_possessed'][weapon])
+        self.target_weapons_str = ' '.join(weapon for weapon in self.config['weapon_props'] if not self.inventory['weapon_core_possessed'][weapon])
         # 计算最优刷取计划
         self.plan()
 
