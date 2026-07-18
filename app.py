@@ -21,7 +21,7 @@ class VDividerWidget(QFrame):
         self.setFrameShadow(QFrame.Shadow.Sunken)
 
 class WeaponCheckerWidget(QWidget):
-    def __init__(self, parent, config):
+    def __init__(self, parent, config, basic_tag_pool, extra_tag_pool, skill_tag_pool):
         super().__init__(parent=parent)
         self.basic_tag = None
         self.extra_tag = None
@@ -30,6 +30,9 @@ class WeaponCheckerWidget(QWidget):
         self.check_inventory = False
         self.inventory = None
         self.config = config
+        self.basic_tag_pool = basic_tag_pool
+        self.extra_tag_pool = extra_tag_pool
+        self.skill_tag_pool = skill_tag_pool
         self.tag_mp = {
             '基础词条': 'basic_tag',
             '附加词条': 'extra_tag',
@@ -99,17 +102,17 @@ class WeaponCheckerWidget(QWidget):
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(50, 50, 50, 50)
 
-        layout = self.init_tag_layout(self, '基础词条', self.config['tag_pools']['basic_tag_pool'], self.config['basic_tag_n_col'])
+        layout = self.init_tag_layout(self, '基础词条', self.basic_tag_pool, self.config['basic_tag_n_col'])
         main_layout.addLayout(layout)
         main_layout.addSpacing(25)
         main_layout.addWidget(HDividerWidget(parent=self))
         main_layout.addSpacing(25)
-        layout = self.init_tag_layout(self, '附加词条', self.config['tag_pools']['extra_tag_pool'], self.config['extra_tag_n_col'])
+        layout = self.init_tag_layout(self, '附加词条', self.extra_tag_pool, self.config['extra_tag_n_col'])
         main_layout.addLayout(layout)
         main_layout.addSpacing(25)
         main_layout.addWidget(HDividerWidget(parent=self))
         main_layout.addSpacing(25)
-        layout = self.init_tag_layout(self, '技能词条', self.config['tag_pools']['skill_tag_pool'], self.config['skill_tag_n_col'])
+        layout = self.init_tag_layout(self, '技能词条', self.skill_tag_pool, self.config['skill_tag_n_col'])
         main_layout.addLayout(layout)
         main_layout.addSpacing(25)
         main_layout.addWidget(HDividerWidget(parent=self))
@@ -343,17 +346,18 @@ class MainWindow(QMainWindow):
         self.config = self.load_config()
         self.tab_widget = QTabWidget()
 
-        self.init_ui()
+        self.init()
 
     def load_config(self):
         if not (get_root_path() / 'config.json').exists():
             QMessageBox.critical(self, 'config.json 文件不存在', 'config.json 文件缺失！')
-            return
+            raise
+
         with open(get_root_path() / 'config.json', 'r', encoding='utf-8') as f:
             config = json.load(f)
         return config
     
-    def init_ui(self):
+    def init(self):
         self.resize(1200, 800)
 
         center_point = QApplication.primaryScreen().availableGeometry().center()
@@ -363,12 +367,28 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle('终末地武器基质 app')
 
+        # 计算 tag pools
+        tags = self.config['weapon_props'].values()
+        basic_tag_pool, extra_tag_pool, skill_tag_pool = set(), set(), set()
+        for _, (bt, et, st) in tags:
+            basic_tag_pool.add(bt)
+            extra_tag_pool.add(et)
+            skill_tag_pool.add(st)
+        basic_tag_pool = sorted(basic_tag_pool)
+        extra_tag_pool = sorted(extra_tag_pool)
+        skill_tag_pool = sorted(skill_tag_pool)
+
         # 布局
         # 基质刷取建议
         self.tab_widget.addTab(WeaponCorePlannerWidget(parent=self, config=self.config), '基质刷取推荐')
 
         # 武器基质检查
-        self.tab_widget.addTab(WeaponCheckerWidget(parent=self, config=self.config), '基质检查')
+        self.tab_widget.addTab(WeaponCheckerWidget(
+            parent=self, 
+            config=self.config, 
+            basic_tag_pool=basic_tag_pool,
+            extra_tag_pool=extra_tag_pool, 
+            skill_tag_pool=skill_tag_pool), '基质检查')
 
         self.setCentralWidget(self.tab_widget)
 
