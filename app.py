@@ -28,7 +28,7 @@ class WeaponCheckerWidget(QWidget):
         self.skill_tag = None
 
         self.check_inventory = False
-        self.inventory = None
+        self.inventory = {}
         self.config = config
         self.basic_tag_pool = basic_tag_pool
         self.extra_tag_pool = extra_tag_pool
@@ -142,7 +142,7 @@ class WeaponCorePlannerWidget(QWidget):
         super().__init__(parent=parent)
         self.target_weapons_str = ''
         self.check_inventory = False
-        self.inventory = None
+        self.inventory = {}
         self.config = config
 
         self.init()
@@ -181,12 +181,9 @@ class WeaponCorePlannerWidget(QWidget):
 
             weapons_list = sorted(weapon_props.keys(), key=lambda x: weapon_props[x][0])
             targets = set(target_weapons)
-            max_target_weapons = max_nontarget_weapons = 0
-            best_weapon_indices_lists, cur_weapon_indices_list = [], []
-            tags_vis_list, tags_vis, basic_tag_vis, extra_skill_tag_vis = [], set(), set(), None
 
             def helper(i):
-                nonlocal basic_tag_vis, extra_skill_tag_vis
+                nonlocal extra_skill_tag_vis
                 if i < 0:
                     nonlocal max_target_weapons, max_nontarget_weapons
                     cur_target_weapons = sum(1 for idx in cur_weapon_indices_list if weapons_list[idx] in targets)
@@ -245,6 +242,9 @@ class WeaponCorePlannerWidget(QWidget):
 
             text.append('\n开始计算每个副本的刷取目标武器基质的最佳词条搭配\n')
             for place, place_tag_pool in places.items():
+                max_target_weapons = max_nontarget_weapons = 0
+                best_weapon_indices_lists, cur_weapon_indices_list = [], []
+                tags_vis_list, tags_vis, basic_tag_vis, extra_skill_tag_vis = [], set(), set(), None
                 _, extra_tag_pool, skill_tag_pool = place_tag_pool
                 helper(len(weapons_list) - 1)
 
@@ -271,8 +271,8 @@ class WeaponCorePlannerWidget(QWidget):
                                 if self.check_inventory and self.inventory is not None:
                                     text[-1] += ' ' * 10 + \
                                         f' - 武器{"已" if self.inventory['weapon_possessed'][weapon] else "未"}拥有，基质{"已" if self.inventory['weapon_core_possessed'][weapon] else "未"}拥有'
-                        text.append('*' * 50 + '\n')
-                    text.append('-' * 100 + '\n')
+                        text.append('*' * 100 + '\n')
+                    text.append('-' * 150 + '\n')
             text = '\n'.join(text)
         self.text_edit.setText(text)
 
@@ -383,12 +383,16 @@ class MainWindow(QMainWindow):
         self.tab_widget.addTab(WeaponCorePlannerWidget(parent=self, config=self.config), '基质刷取推荐')
 
         # 武器基质检查
-        self.tab_widget.addTab(WeaponCheckerWidget(
-            parent=self, 
-            config=self.config, 
-            basic_tag_pool=basic_tag_pool,
-            extra_tag_pool=extra_tag_pool, 
-            skill_tag_pool=skill_tag_pool), '基质检查')
+        self.tab_widget.addTab(
+            WeaponCheckerWidget(
+                parent=self, 
+                config=self.config, 
+                basic_tag_pool=basic_tag_pool,
+                extra_tag_pool=extra_tag_pool, 
+                skill_tag_pool=skill_tag_pool
+            ), 
+            '基质检查'
+        )
 
         self.setCentralWidget(self.tab_widget)
 
